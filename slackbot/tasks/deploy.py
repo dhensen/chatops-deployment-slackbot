@@ -23,22 +23,25 @@ def parse_deploy_message(message):
     return res['microservice_name'], res['hash_or_tag'], res['environment']
 
 
-def schedule_deployment(microservice_name, hash_or_tag, environment):
+def schedule_deployment(microservice_name, hash_or_tag, environment, user):
     # get commit_hash via hash_or_tag for microservice_name
     # enqueue a deployment on a deployment queue
     commit_hash = get_commit_hash(microservice_name, hash_or_tag)
 
     try:
-        deployment_queue.enqueue_deployment(Deployment(microservice_name, commit_hash, environment))
+        deployment_queue.enqueue_deployment(Deployment(microservice_name, commit_hash, environment, user))
     except Full as e:
         return "The deployment queue is full, your deployment is not scheduled, please try again later :cry:"
 
     sleep(1)
 
     size = deployment_queue.qsize()
-    if size > 0:
+    if size > 5:
+        return "Your deployment is scheduled :stopwatch:, there are {} deployments to be done first so you better get " \
+               "some :coffee:".format(size)
+    elif size > 0:
         return "Your deployment is scheduled :stopwatch:, there are {} deployments to be done first".format(size)
-    return "Your deployment request will be processed right away :facepunch:"
+    return "Your deployment request will be processed right away :facepunch::skin-tone-5:"
 
 
 def deploy_handler(slack_client):
@@ -62,24 +65,23 @@ def deploy_handler(slack_client):
             slack_client.api_call(
                 "chat.postMessage",
                 channel="#general",
-                text="Started deployment {}:{}@{}...".format(deployment.microservice_name, deployment.commit_hash,
-                                                             deployment.environment),
+                text="<@{}> Started deployment {}:{}@{}...".format(deployment.user, deployment.microservice_name,
+                                                                   deployment.commit_hash,
+                                                                   deployment.environment),
                 as_user=True
             )
 
             # perform steps 2-5
-            sleep(random.randint(30,60))
+            sleep(random.randint(30, 60))
 
             slack_client.api_call(
                 "chat.postMessage",
                 channel="#general",
-                text="Deployment {}:{}@{} done :+1:".format(deployment.microservice_name, deployment.commit_hash, deployment.environment),
+                text="<@{}> Deployment {}:{}@{} done :+1:".format(deployment.user, deployment.microservice_name, deployment.commit_hash,
+                                                                  deployment.environment),
                 as_user=True
             )
 
             deployment_queue.task_done()
 
     return handler
-
-
-

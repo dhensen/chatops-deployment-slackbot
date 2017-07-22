@@ -19,7 +19,7 @@ slack_token = os.environ["SLACK_API_TOKEN"]
 slack_client = SlackClient(slack_token)
 
 
-def handle_command(command, channel):
+def handle_command(command, channel, user):
     """
         Receives commands directed at the bot and determines if they
         are valid commands. If so, then acts on the commands. If not,
@@ -28,14 +28,15 @@ def handle_command(command, channel):
     response = "Not sure what you mean. Use the *" + DEPLOY_COMMAND + \
                "* command with numbers, delimited by spaces."
     if command.startswith(DEPLOY_COMMAND):
-        response = schedule_deployment(*parse_deploy_message(command))
+        response = schedule_deployment(*parse_deploy_message(command), user)
     elif command.startswith(STATUS_COMMAND):
         size = deployment_queue.qsize()
         if size:
             response = "Processing {} deployments".format(size)
         else:
             response = "Just idling boss!"
-    print(channel)
+
+    # response = "<@{}> ".format(user) + response
     slack_client.api_call("chat.postMessage", channel=channel,
                           text=response, as_user=True)
 
@@ -76,9 +77,10 @@ def stop_workers(threads):
 def main_loop():
     while True:
         print("event loop iteration")
-        command, channel = parse_slack_output(slack_client.rtm_read())
+        slack_rtm_output = slack_client.rtm_read()
+        command, channel = parse_slack_output(slack_rtm_output)
         if command and channel:
-            handle_command(command, channel)
+            handle_command(command, channel, slack_rtm_output[0]['user'])
         time.sleep(READ_WEBSOCKET_DELAY)
 
 
@@ -91,7 +93,7 @@ if __name__ == "__main__":
             main_thread = threading.Thread(target=main_loop)
             main_thread.start()
         except Exception as e:
-            print("FF", str(e), "FO")
+            print(str(e))
             stop_workers(threads)
         finally:
             pass
