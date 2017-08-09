@@ -1,11 +1,14 @@
+import os
 import random
+import subprocess
 from queue import Full
+from tempfile import TemporaryDirectory
 from time import sleep
 
 from parse import parse
 
-from slackbot.deployment_queue import DeploymentQueue, Deployment
-from slackbot.providers.commit_hash import get_commit_hash
+from slackbot.deployment_queue import DeploymentQueue
+from slackbot.providers.commit_hash import get_commit_hash, GH_TOKEN, GH_USER
 
 deployment_queue = DeploymentQueue()
 
@@ -28,9 +31,13 @@ def schedule_deployment(microservice_name, hash_or_tag, environment, user):
     # enqueue a deployment on a deployment queue
     commit_hash = get_commit_hash(microservice_name, hash_or_tag)
 
+    if commit_hash is None:
+        return "A commit hash is not found for short hash or tag {}, did you forget to push it?".format(hash_or_tag)
+
     try:
-        deployment_queue.enqueue_deployment(Deployment(microservice_name, commit_hash, environment, user))
-    except Full as e:
+        deployment_queue.enqueue_deployment(
+            {'microservice_name': microservice_name, 'commit_hash': commit_hash, 'environment': environment, 'user': user})
+    except Full:
         return "The deployment queue is full, your deployment is not scheduled, please try again later :cry:"
 
     sleep(1)
@@ -62,26 +69,32 @@ def deploy_handler(slack_client):
             # sleep 2 second to receive deployment scheduling/processing message first
             sleep(2)
 
-            slack_client.api_call(
-                "chat.postMessage",
-                channel="#general",
-                text="<@{}> Started deployment {}:{}@{}...".format(deployment.user, deployment.microservice_name,
-                                                                   deployment.commit_hash,
-                                                                   deployment.environment),
-                as_user=True
-            )
+            send_message(slack_client, deployment,
+                         "<@{user}> Started deploying {microsevice_name}:{commit_hash} to {environment}")
 
             # perform steps 2-5
-            sleep(random.randint(30, 60))
 
-            slack_client.api_call(
-                "chat.postMessage",
-                channel="#general",
-                text="<@{}> Deployment {}:{}@{} done :+1:".format(deployment.user, deployment.microservice_name, deployment.commit_hash,
-                                                                  deployment.environment),
-                as_user=True
-            )
+            with TemporaryDirectory() as tmpdirname:
+                os.chdir(tmpdirname)
+                username = GH_USER
+                password = GH_TOKEN
+                organisation = 'riddlesio'
+                subprocess.run("git clone https://{}:{}@github.com/{}}/{}".format(
+                    username, password, organisation, deployment.microservice_name))
+
+            send_message(slack_client, deployment,
+                         "<@{user}> Deploying {microservice_name}:{commit_hash} to {environment} done :+1:")
 
             deployment_queue.task_done()
 
     return handler
+
+
+def send_message(slack_client, deployment, message):
+
+    slack_client.api_call(
+        "chat.postMessage",
+        channel="#general",
+        text=message.format(**deployment),
+        as_user=True
+    )
