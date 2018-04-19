@@ -7,6 +7,7 @@ GH_ORGANISATION = os.getenv('GH_ORGANISATION')
 
 
 def get_microservice_repository_name(microservice_name):
+    # todo: create a config map that maps a microservice onto a repository, for now we use a mono-repo so this is easy
     return 'microservices-nova'
 
 
