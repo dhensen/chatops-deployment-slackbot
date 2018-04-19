@@ -1,6 +1,5 @@
 defined_environments = [
     'test',
-    'staging',
     'production'
 ]
 
