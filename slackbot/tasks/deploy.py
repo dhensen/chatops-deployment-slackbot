@@ -1,5 +1,4 @@
 import os
-import random
 import subprocess
 from queue import Full
 from tempfile import TemporaryDirectory
@@ -8,7 +7,7 @@ from time import sleep
 from parse import parse
 
 from slackbot.deployment_queue import DeploymentQueue
-from slackbot.providers.commit_hash import get_commit_hash, GH_TOKEN, GH_USER
+from slackbot.providers.commit_hash import get_commit_hash, GH_TOKEN, GH_USER, GH_ORGANISATION
 
 deployment_queue = DeploymentQueue()
 
@@ -76,11 +75,8 @@ def deploy_handler(slack_client):
 
             with TemporaryDirectory() as tmpdirname:
                 os.chdir(tmpdirname)
-                username = GH_USER
-                password = GH_TOKEN
-                organisation = 'riddlesio'
                 subprocess.run("git clone https://{}:{}@github.com/{}}/{}".format(
-                    username, password, organisation, deployment.microservice_name))
+                    GH_USER, GH_TOKEN, GH_ORGANISATION, deployment.microservice_name))
 
             send_message(slack_client, deployment,
                          "<@{user}> Deploying {microservice_name}:{commit_hash} to {environment} done :+1:")
