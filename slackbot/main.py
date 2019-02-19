@@ -7,7 +7,7 @@ from slackclient import SlackClient
 from slackbot.tasks.deploy import deploy_handler, parse_deploy_message, deployment_queue, schedule_deployment
 
 # starterbot's ID as an environment variable
-BOT_ID = os.environ.get("BOT_ID")
+from slackbot.settings import BOT_ID, SLACK_API_TOKEN
 
 # constants
 AT_BOT = "<@" + BOT_ID + ">"
@@ -15,8 +15,7 @@ DEPLOY_COMMAND = "deploy"
 STATUS_COMMAND = "status"
 
 # instantiate Slack client
-slack_token = os.environ["SLACK_API_TOKEN"]
-slack_client = SlackClient(slack_token)
+slack_client = SlackClient(SLACK_API_TOKEN)
 
 
 def handle_command(command, channel, user):
@@ -37,8 +36,9 @@ def handle_command(command, channel, user):
             response = "Just idling boss!"
 
     # response = "<@{}> ".format(user) + response
-    slack_client.api_call("chat.postMessage", channel=channel,
-                          text=response, as_user=True)
+    slack_client.api_call(
+        "chat.postMessage", channel=channel, text=response, as_user=True
+    )
 
 
 def parse_slack_output(slack_rtm_output):
@@ -86,7 +86,7 @@ def main_loop():
 
 
 if __name__ == "__main__":
-    READ_WEBSOCKET_DELAY = 1 # 1 second delay between reading from firehose
+    READ_WEBSOCKET_DELAY = 1  # 1 second delay between reading from firehose
     if slack_client.rtm_connect():
         print("StarterBot connected and running!")
         threads = start_workers(1)

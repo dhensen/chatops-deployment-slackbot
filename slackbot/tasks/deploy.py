@@ -75,8 +75,8 @@ def deploy_handler(slack_client):
 
             with TemporaryDirectory() as tmpdirname:
                 os.chdir(tmpdirname)
-                subprocess.run("git clone https://{}:{}@github.com/{}}/{}".format(
-                    GH_USER, GH_TOKEN, GH_ORGANISATION, deployment.microservice_name))
+                subprocess.run("git clone https://{user}:{token}@github.com/{organisation}/{repository}".format(
+                    user=GH_USER, token=GH_TOKEN, organisation=GH_ORGANISATION, repository=deployment.microservice_name))
 
             send_message(slack_client, deployment,
                          "<@{user}> Deploying {microservice_name}:{commit_hash} to {environment} done :+1:")

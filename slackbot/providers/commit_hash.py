@@ -1,9 +1,7 @@
 import os
 from github import Github
 
-GH_USER = os.getenv('GH_USER')
-GH_TOKEN = os.getenv('GH_TOKEN')
-GH_ORGANISATION = os.getenv('GH_ORGANISATION')
+from slackbot.settings import GH_ORGANISATION, GH_TOKEN, GH_USER
 
 
 def get_microservice_repository_name(microservice_name):
